@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/user');
 const jwt = require('jsonwebtoken');
-const rand_token = require('rand-token');
 
+let access_tokens = {};
 let refresh_tokens = {};
 
 router.post('/sign_up', (request, response) => {
@@ -88,6 +88,7 @@ router.post('/sign_in', (request, response) => {
       if (check_password) {
         context.message = 'ok'
         context['token'] = jwt.sign({ user: user_object }, response.locals.secret_key, { expiresIn: 15 });
+        access_tokens[context.token] = request.fingerprint.hash;
         context['refresh_token'] = jwt.sign({ user: user_object }, response.locals.secret_key_refresh, { expiresIn: '60d' });
         refresh_tokens[context.refresh_token] = user_object.username;
         return response.json(context);
@@ -100,15 +101,20 @@ router.post('/sign_in', (request, response) => {
 });
 
 router.post('/token', (request, response) => {
+  // console.log(request);
   let username = request.body.username;
+  let old_access_token = request.body.authorization;
   let refresh_token = request.body.refresh_token;
   jwt.verify(refresh_token, response.locals.secret_key_refresh, (error, authData) => {
     if (error) {
+      console.log('here baby');
       response.sendStatus(401);
     }
     else {
-      if ((refresh_token in refresh_tokens) && (refresh_tokens[refresh_token] == username)) {
+      if (((refresh_token in refresh_tokens) && (refresh_tokens[refresh_token] == username)) &&
+       ((old_access_token in access_tokens) && (request.fingerprint.hash === access_tokens[old_access_token]))) {
         let access_token = jwt.sign({ user: username }, response.locals.secret_key, { expiresIn: 15 });
+        access_tokens[access_token] = request.fingerprint.hash;
         response.json({ access_token });
       }
       else {
@@ -123,22 +129,24 @@ router.get('/user_data', verify_token, (request, response, next) => {
 });
 
 
-module.exports = router;
-
-
 function verify_token(request, response, next) {
-  console.log(request.headers);
+  // console.log(request.fingerprint);
+  // console.log(access_tokens);
   let access_token = request.headers['authorization'];
-  console.log(request.headers);
   if (typeof access_token !== 'undefined') {
-    // let token = bearerHeader.split(' ')[1];
-    // request.token = token;
+
     jwt.verify(access_token, response.locals.secret_key, (error, authData) => {
       if (error) {
         response.sendStatus(403);
       }
       else {
-        next();
+        // verify fingerprint here
+        if ((access_token in access_tokens) && (request.fingerprint.hash === access_tokens[access_token])) {
+          next();
+        }   
+        else {
+          response.sendStatus(403);
+        }
       }
     });
   }
@@ -146,5 +154,8 @@ function verify_token(request, response, next) {
     response.sendStatus(403);
   }
 }
+
+
+module.exports = router, verify_token;
 
 

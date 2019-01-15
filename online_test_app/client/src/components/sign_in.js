@@ -59,6 +59,7 @@ class SignIn extends Component {
           localStorage.setItem('access_token', response.data.token);
           localStorage.setItem('refresh_token', response.data.refresh_token);
           localStorage.setItem('username', current_state.username);
+          window.location = '/main';
         }
       })
       .catch((error) => {

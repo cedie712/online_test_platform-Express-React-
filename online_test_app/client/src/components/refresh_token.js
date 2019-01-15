@@ -3,6 +3,7 @@ import axios from 'axios';
 
 let refresh_token = () => {
     axios.post('/api/user/token', {
+    authorization: localStorage.getItem('access_token'),
     refresh_token: localStorage.getItem('refresh_token'),
     username: localStorage.getItem('username')
   })

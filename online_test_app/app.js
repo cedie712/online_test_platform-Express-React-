@@ -4,6 +4,7 @@ const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 const mongoose = require('mongoose');
 const validator = require('express-validator');
+const fingerprint = require('express-fingerprint')
 
 // Routes
 const indexRouter = require('./routes/index');
@@ -25,6 +26,15 @@ app.use((request, response, next) => {
   response.locals.secret_key_refresh = '#$%ge^54f$#gdd%^g_45fg-__$5+45krlg$%04vf4';
   next()
 });
+
+app.use(fingerprint({
+  parameters:[
+      // Defaults
+      fingerprint.useragent,
+      fingerprint.acceptHeaders,
+      fingerprint.geoip,
+  ]
+}))
 
 app.use('/api/user', userRouter);
 app.use('/api', indexRouter);
